@@ -1,13 +1,22 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-
 const generateToken = require("../utils/generateToken");
 
+// ✅ REGISTER USER
 const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-        // check if user exists
+        console.log("BODY:", req.body);
+
+        // validation
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                message: "Please fill all fields",
+            });
+        }
+
+        // check existing user
         const userExists = await User.findOne({ email });
 
         if (userExists) {
@@ -16,7 +25,7 @@ const registerUser = async (req, res) => {
             });
         }
 
-        // hash password
+        
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -27,13 +36,16 @@ const registerUser = async (req, res) => {
             password: hashedPassword,
         });
 
+        
         res.status(201).json({
             _id: user._id,
             name: user.name,
             email: user.email,
+            token: generateToken(user._id),
         });
 
     } catch (error) {
+        console.log("ERROR:", error);
         res.status(500).json({
             message: error.message,
         });
@@ -41,49 +53,49 @@ const registerUser = async (req, res) => {
 };
 
 
-const loginUser = async(req, res) =>{
-    try{
-        const {email, password} = req.body;
 
-        const user = await User.findOne({email});
+const loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
-        if(!user){
+        const user = await User.findOne({ email });
+
+        if (!user) {
             return res.status(400).json({
-                message:"User not found", 
+                message: "User not found",
             });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
-        if(!isMatch){
+        if (!isMatch) {
             return res.status(400).json({
                 message: "Invalid Credentials",
             });
         }
 
-         res.status(200).json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    token: generateToken(user._id),
-});
+        res.status(200).json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            token: generateToken(user._id),
+        });
 
     } catch (error) {
         res.status(500).json({
             message: error.message,
         });
     }
-    
-}
-
-
-const getUserProfile = async (req, res) => {
-  if (req.user) {
-    res.json(req.user);
-  } else {
-    res.status(404).json({ message: "User not found" });
-  }
 };
 
 
-module.exports = { registerUser , loginUser, getUserProfile };
+
+const getUserProfile = async (req, res) => {
+    if (req.user) {
+        res.json(req.user);
+    } else {
+        res.status(404).json({ message: "User not found" });
+    }
+};
+
+module.exports = { registerUser, loginUser, getUserProfile };
